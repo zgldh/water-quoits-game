@@ -2,7 +2,7 @@ import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
 import "@babylonjs/loaders/glTF";
 import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, MeshBuilder, StandardMaterial, Texture, CannonJSPlugin, IPhysicsEnabledObject, IPhysicsEngine, PhysicsImpostor, BoxBuilder, AmmoJSPlugin } from "@babylonjs/core";
-import { BOX_BORDER, BOX_DEEPTH, BOX_HEIGHT, BOX_WIDTH, MAX_SPHERES, SPHERE_DIAMETER } from "./consts";
+import { BOX_BORDER, BOX_DEEPTH, BOX_HEIGHT, BOX_WIDTH, CAMERA_POSITION_Y, CAMERA_POSITION_Z, MAX_SPHERES, SPHERE_DIAMETER } from "./consts";
 
 class App {
     private canvas: HTMLCanvasElement;
@@ -43,8 +43,8 @@ class App {
         this.scene.enablePhysics(gravityVector, physicsPlugin);
         this.physicsEngine = this.scene.getPhysicsEngine() as IPhysicsEngine;
 
-        this.camera = new ArcRotateCamera("Camera", 0, 0, 10, Vector3.Zero(), this.scene);
-        this.camera.position = new Vector3(0, 0, -10);
+        this.camera = new ArcRotateCamera("Camera", 0, 0, 10, new Vector3(0, CAMERA_POSITION_Y, 0), this.scene);
+        this.camera.position = new Vector3(0, 0, CAMERA_POSITION_Z);
         this.camera.attachControl(this.canvas, true);
         var light1: HemisphericLight = new HemisphericLight("light1", new Vector3(1, 1, 0), this.scene);
 
