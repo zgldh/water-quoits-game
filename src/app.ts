@@ -46,7 +46,7 @@ class App {
 
         this.camera = new ArcRotateCamera("Camera", 0, 0, 10, new Vector3(0, CAMERA_POSITION_Y, 0), this.scene);
         this.camera.position = new Vector3(0, 0, CAMERA_POSITION_Z);
-        this.camera.attachControl(this.canvas, true);
+        // this.camera.attachControl(this.canvas, true);
         var light1: HemisphericLight = new HemisphericLight("light1", new Vector3(1, 1, 0), this.scene);
 
         // Play box
