@@ -147,7 +147,7 @@ class App {
 
     }
     private createBustButton(name: string, left: string) {
-        const button = Button.CreateImageOnlyButton(name, "assets/textures/button1.png");
+        const button = Button.CreateImageOnlyButton(name, "/assets/textures/button1.png");
         button.left = left;
         button.top = "300px";
         button.width = "150px";

@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "webpack",
+    "build": "webpack && cp -r public/assets cordova/www/assets",
     "start": "webpack-dev-server --port 8080"
   },
   "repository": {
