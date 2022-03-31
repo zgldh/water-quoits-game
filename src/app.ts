@@ -1,8 +1,9 @@
 import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
 import "@babylonjs/loaders/glTF";
-import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, MeshBuilder, StandardMaterial, Texture, CannonJSPlugin, IPhysicsEnabledObject, IPhysicsEngine, PhysicsImpostor, BoxBuilder, AmmoJSPlugin } from "@babylonjs/core";
-import { BOX_BORDER, BOX_DEEPTH, BOX_HEIGHT, BOX_WIDTH, CAMERA_POSITION_Y, CAMERA_POSITION_Z, MAX_SPHERES, SPHERE_DIAMETER } from "./consts";
+import { AdvancedDynamicTexture, Button } from '@babylonjs/gui';
+import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, MeshBuilder, StandardMaterial, Texture, CannonJSPlugin, IPhysicsEnabledObject, IPhysicsEngine, PhysicsImpostor, BoxBuilder, AmmoJSPlugin, Ray, AbstractMesh } from "@babylonjs/core";
+import { BOX_BORDER, BOX_DEEPTH, BOX_HEIGHT, BOX_WIDTH, BUSTER_CENTER_FORCE, BUSTER_SIDE_FORCE, CAMERA_POSITION_Y, CAMERA_POSITION_Z, MAX_SPHERES, TORUS_DIAMETER as TORUS_DIAMETER, TORUS_TESSELLATION, TORUS_THICKNESS } from "./consts";
 
 class App {
     private canvas: HTMLCanvasElement;
@@ -74,10 +75,14 @@ class App {
 
         // Spheres
         for (let i = 0; i < MAX_SPHERES; i++) {
-            let sphere: Mesh = MeshBuilder.CreateSphere("sphere", { diameter: SPHERE_DIAMETER }, this.scene);
+            let sphere: Mesh = MeshBuilder.CreateTorus("torus", {
+                diameter: TORUS_DIAMETER,
+                thickness: TORUS_THICKNESS,
+                tessellation: TORUS_TESSELLATION
+            }, this.scene);
             sphere.position.x = Math.random() * (BOX_WIDTH - BOX_BORDER * 2) - (BOX_WIDTH - BOX_BORDER * 2) / 2;
             sphere.position.y = Math.random() * (BOX_HEIGHT - BOX_BORDER * 2) - (BOX_HEIGHT - BOX_BORDER * 2) / 2;
-            sphere.physicsImpostor = new PhysicsImpostor(sphere, PhysicsImpostor.SphereImpostor, { mass: 1, restitution: 0.9 }, this.scene);
+            sphere.physicsImpostor = new PhysicsImpostor(sphere, PhysicsImpostor.MeshImpostor, { mass: 1, restitution: 0.9 }, this.scene);
         }
 
     }
@@ -109,6 +114,78 @@ class App {
             }
         }, true);
 
+        // left and right buttons
+        var advancedTexture = AdvancedDynamicTexture.CreateFullscreenUI("myUI");
+        var leftButton = this.createBustButton("leftbutton", "-300px")
+        leftButton.onPointerDownObservable.add(() => {
+            let centerPicked = this.centraPickBustedTorus(new Vector3(-3.5, -6, 0));
+            let sidePicked = this.sidePickBustedTorus(new Vector3(-3.5, -6, 0));
+            console.log('leftButton picked', centerPicked, sidePicked);
+            centerPicked.forEach(element => {
+                element.physicsImpostor.applyImpulse(new Vector3(0, BUSTER_CENTER_FORCE, 0), element.getAbsolutePosition());
+            });
+            sidePicked.forEach(element => {
+                element.physicsImpostor.applyImpulse(new Vector3(0, BUSTER_SIDE_FORCE, 0), element.getAbsolutePosition());
+            });
+        });
+
+        var rightButton = this.createBustButton("rightbutton", "300px");
+        rightButton.onPointerDownObservable.add(() => {
+            let centerPicked = this.centraPickBustedTorus(new Vector3(3.5, -6, 0));
+            let sidePicked = this.sidePickBustedTorus(new Vector3(3.5, -6, 0));
+            console.log('rightButton picked', centerPicked, sidePicked);
+            centerPicked.forEach(element => {
+                element.physicsImpostor.applyImpulse(new Vector3(0, BUSTER_CENTER_FORCE, 0), element.getAbsolutePosition());
+            });
+            sidePicked.forEach(element => {
+                element.physicsImpostor.applyImpulse(new Vector3(0, BUSTER_SIDE_FORCE, 0), element.getAbsolutePosition());
+            });
+        });
+
+        advancedTexture.addControl(leftButton);
+        advancedTexture.addControl(rightButton);
+
+    }
+    private createBustButton(name: string, left: string) {
+        const button = Button.CreateImageOnlyButton(name, "assets/textures/button1.png");
+        button.left = left;
+        button.top = "300px";
+        button.width = "150px";
+        button.height = "150px";
+        button.thickness = 0;
+        return button;
+    }
+    private centraPickBustedTorus(centraVectory: Vector3):AbstractMesh[] {
+        return this.scene.multiPickWithRay(
+            new Ray(centraVectory, new Vector3(0, 1, 0), BOX_HEIGHT / 3),
+            (mesh: AbstractMesh) => mesh.name.indexOf("torus") !== -1
+        ).map(mesh => mesh.pickedMesh);
+    }
+    private sidePickBustedTorus(centraVectory: Vector3):AbstractMesh[] {
+        const picked_xp = this.scene.multiPickWithRay(
+            new Ray(centraVectory.add(new Vector3(0.5, 0, 0)), new Vector3(0, 1, 0), BOX_HEIGHT / 3),
+            (mesh: AbstractMesh) => mesh.name.indexOf("torus") !== -1
+        );
+        const picked_xn = this.scene.multiPickWithRay(
+            new Ray(centraVectory.add(new Vector3(-0.5, 0, 0)), new Vector3(0, 1, 0), BOX_HEIGHT / 3),
+            (mesh: AbstractMesh) => mesh.name.indexOf("torus") !== -1
+        );
+        const picked_zp = this.scene.multiPickWithRay(
+            new Ray(centraVectory.add(new Vector3(0, 0, 0.5)), new Vector3(0, 1, 0), BOX_HEIGHT / 3),
+            (mesh: AbstractMesh) => mesh.name.indexOf("torus") !== -1
+        );
+        const picked_zn = this.scene.multiPickWithRay(
+            new Ray(centraVectory.add(new Vector3(0, 0, -0.5)), new Vector3(0, 1, 0), BOX_HEIGHT / 3),
+            (mesh: AbstractMesh) => mesh.name.indexOf("torus") !== -1
+        );
+        const pickedMeshes: { [key: string]: AbstractMesh } = {};
+        picked_xp.concat(picked_xn).concat(picked_zp).concat(picked_zn).map(p => p.pickedMesh).forEach(m => {
+            if (pickedMeshes.hasOwnProperty(m.name) === false) {
+                pickedMeshes[m.name] = m;
+            };
+        });
+
+        return Object.values(pickedMeshes);
     }
 }
 new App();
