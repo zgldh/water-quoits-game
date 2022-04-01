@@ -1,9 +1,9 @@
 import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
 import "@babylonjs/loaders/glTF";
-import { AdvancedDynamicTexture, Button } from '@babylonjs/gui';
+import { AdvancedDynamicTexture, Button, Control } from '@babylonjs/gui';
 import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, MeshBuilder, StandardMaterial, Texture, CannonJSPlugin, IPhysicsEnabledObject, IPhysicsEngine, PhysicsImpostor, BoxBuilder, AmmoJSPlugin, Ray, AbstractMesh } from "@babylonjs/core";
-import { BOX_BORDER, BOX_DEEPTH, BOX_HEIGHT, BOX_WIDTH, BUSTER_CENTER_FORCE, BUSTER_SIDE_FORCE, CAMERA_POSITION_Y, CAMERA_POSITION_Z, MAX_SPHERES, TORUS_DIAMETER as TORUS_DIAMETER, TORUS_TESSELLATION, TORUS_THICKNESS } from "./consts";
+import { BOX_BORDER, BOX_DEEPTH, BOX_HEIGHT, BOX_WIDTH, BUSTER_CENTER_FORCE, BUSTER_LEFT_X, BUSTER_RIGHT_X, BUSTER_SIDE_FORCE, BUSTER_SIDE_RADIUS, BUSTER_Y, BUSTER_Z, CAMERA_POSITION_Y, CAMERA_POSITION_Z, MAX_SPHERES, TORUS_DIAMETER as TORUS_DIAMETER, TORUS_TESSELLATION, TORUS_THICKNESS } from "./consts";
 
 class App {
     private canvas: HTMLCanvasElement;
@@ -116,10 +116,11 @@ class App {
 
         // left and right buttons
         var advancedTexture = AdvancedDynamicTexture.CreateFullscreenUI("myUI");
-        var leftButton = this.createBustButton("leftbutton", "-300px")
+        var leftButton = this.createBustButton("leftbutton");
+        leftButton.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         leftButton.onPointerDownObservable.add(() => {
-            let centerPicked = this.centraPickBustedTorus(new Vector3(-3.5, -6, 0));
-            let sidePicked = this.sidePickBustedTorus(new Vector3(-3.5, -6, 0));
+            let centerPicked = this.centraPickBustedTorus(new Vector3(BUSTER_LEFT_X, BUSTER_Y, BUSTER_Z));
+            let sidePicked = this.sidePickBustedTorus(new Vector3(BUSTER_LEFT_X, BUSTER_Y, BUSTER_Z));
             console.log('leftButton picked', centerPicked, sidePicked);
             centerPicked.forEach(element => {
                 element.physicsImpostor.applyImpulse(new Vector3(0, BUSTER_CENTER_FORCE, 0), element.getAbsolutePosition());
@@ -129,10 +130,11 @@ class App {
             });
         });
 
-        var rightButton = this.createBustButton("rightbutton", "300px");
+        var rightButton = this.createBustButton("rightbutton");
+        rightButton.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
         rightButton.onPointerDownObservable.add(() => {
-            let centerPicked = this.centraPickBustedTorus(new Vector3(3.5, -6, 0));
-            let sidePicked = this.sidePickBustedTorus(new Vector3(3.5, -6, 0));
+            let centerPicked = this.centraPickBustedTorus(new Vector3(BUSTER_RIGHT_X, BUSTER_Y, BUSTER_Z));
+            let sidePicked = this.sidePickBustedTorus(new Vector3(BUSTER_RIGHT_X, BUSTER_Y, BUSTER_Z));
             console.log('rightButton picked', centerPicked, sidePicked);
             centerPicked.forEach(element => {
                 element.physicsImpostor.applyImpulse(new Vector3(0, BUSTER_CENTER_FORCE, 0), element.getAbsolutePosition());
@@ -146,36 +148,39 @@ class App {
         advancedTexture.addControl(rightButton);
 
     }
-    private createBustButton(name: string, left: string) {
-        const button = Button.CreateImageOnlyButton(name, "/assets/textures/button1.png");
-        button.left = left;
-        button.top = "300px";
+    private createBustButton(name: string) {
+        const button = Button.CreateImageButton(name, name, "assets/textures/button1.png");
+        // button.left = left;
+        // button.top = "300px";
+        button.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         button.width = "150px";
         button.height = "150px";
         button.thickness = 0;
+        button.image.width = "150px";
+        button.image.height = "150px";
         return button;
     }
-    private centraPickBustedTorus(centraVectory: Vector3):AbstractMesh[] {
+    private centraPickBustedTorus(centraVectory: Vector3): AbstractMesh[] {
         return this.scene.multiPickWithRay(
             new Ray(centraVectory, new Vector3(0, 1, 0), BOX_HEIGHT / 3),
             (mesh: AbstractMesh) => mesh.name.indexOf("torus") !== -1
         ).map(mesh => mesh.pickedMesh);
     }
-    private sidePickBustedTorus(centraVectory: Vector3):AbstractMesh[] {
+    private sidePickBustedTorus(centraVectory: Vector3): AbstractMesh[] {
         const picked_xp = this.scene.multiPickWithRay(
-            new Ray(centraVectory.add(new Vector3(0.5, 0, 0)), new Vector3(0, 1, 0), BOX_HEIGHT / 3),
+            new Ray(centraVectory.add(new Vector3(BUSTER_SIDE_RADIUS, 0, 0)), new Vector3(0, 1, 0), BOX_HEIGHT / 3),
             (mesh: AbstractMesh) => mesh.name.indexOf("torus") !== -1
         );
         const picked_xn = this.scene.multiPickWithRay(
-            new Ray(centraVectory.add(new Vector3(-0.5, 0, 0)), new Vector3(0, 1, 0), BOX_HEIGHT / 3),
+            new Ray(centraVectory.add(new Vector3(-BUSTER_SIDE_RADIUS, 0, 0)), new Vector3(0, 1, 0), BOX_HEIGHT / 3),
             (mesh: AbstractMesh) => mesh.name.indexOf("torus") !== -1
         );
         const picked_zp = this.scene.multiPickWithRay(
-            new Ray(centraVectory.add(new Vector3(0, 0, 0.5)), new Vector3(0, 1, 0), BOX_HEIGHT / 3),
+            new Ray(centraVectory.add(new Vector3(0, 0, BUSTER_SIDE_RADIUS)), new Vector3(0, 1, 0), BOX_HEIGHT / 3),
             (mesh: AbstractMesh) => mesh.name.indexOf("torus") !== -1
         );
         const picked_zn = this.scene.multiPickWithRay(
-            new Ray(centraVectory.add(new Vector3(0, 0, -0.5)), new Vector3(0, 1, 0), BOX_HEIGHT / 3),
+            new Ray(centraVectory.add(new Vector3(0, 0, -BUSTER_SIDE_RADIUS)), new Vector3(0, 1, 0), BOX_HEIGHT / 3),
             (mesh: AbstractMesh) => mesh.name.indexOf("torus") !== -1
         );
         const pickedMeshes: { [key: string]: AbstractMesh } = {};

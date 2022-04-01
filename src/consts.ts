@@ -13,3 +13,8 @@ export const TORUS_TESSELLATION = 8;
 
 export const BUSTER_CENTER_FORCE = 15;
 export const BUSTER_SIDE_FORCE = 7;
+export const BUSTER_SIDE_RADIUS = 0.25;
+export const BUSTER_LEFT_X = -5.5;
+export const BUSTER_RIGHT_X = 5.5;
+export const BUSTER_Y = -6;
+export const BUSTER_Z = 0;
