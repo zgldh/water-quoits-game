@@ -8,6 +8,23 @@
     <content src="index.html" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
+    <icon src="res/icon/android/playstore-icon.png" />
+    <platform name="android">
+        <!--
+            ldpi    : 36x36 px
+            mdpi    : 48x48 px
+            hdpi    : 72x72 px
+            xhdpi   : 96x96 px
+            xxhdpi  : 144x144 px
+            xxxhdpi : 192x192 px
+        -->
+        <icon src="res/icon/android/mipmap-ldpi/ic_launcher.png" density="ldpi" />
+        <icon src="res/icon/android/mipmap-mdpi/ic_launcher.png" density="mdpi" />
+        <icon src="res/icon/android/mipmap-hdpi/ic_launcher.png" density="hdpi" />
+        <icon src="res/icon/android/mipmap-xhdpi/ic_launcher.png" density="xhdpi" />
+        <icon src="res/icon/android/mipmap-xxhdpi/ic_launcher.png" density="xxhdpi" />
+        <icon src="res/icon/android/mipmap-xxxhdpi/ic_launcher.png" density="xxxhdpi" />
+    </platform>
     <preference name="Fullscreen" value="true" />
     <preference name="Orientation" value="landscape" />
 </widget>
