@@ -8,5 +8,6 @@
     <content src="index.html" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
-    <preference name="orientation" value="landscape" />
+    <preference name="Fullscreen" value="true" />
+    <preference name="Orientation" value="landscape" />
 </widget>

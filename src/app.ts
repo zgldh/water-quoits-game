@@ -1,9 +1,10 @@
 import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
 import "@babylonjs/loaders/glTF";
-import { AdvancedDynamicTexture, Button, Control } from '@babylonjs/gui';
-import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, MeshBuilder, StandardMaterial, Texture, CannonJSPlugin, IPhysicsEnabledObject, IPhysicsEngine, PhysicsImpostor, BoxBuilder, AmmoJSPlugin, Ray, AbstractMesh } from "@babylonjs/core";
-import { BOX_BORDER, BOX_DEEPTH, BOX_HEIGHT, BOX_WIDTH, BUSTER_CENTER_FORCE, BUSTER_LEFT_X, BUSTER_RIGHT_X, BUSTER_SIDE_FORCE, BUSTER_SIDE_RADIUS, BUSTER_Y, BUSTER_Z, CAMERA_POSITION_Y, CAMERA_POSITION_Z, MAX_SPHERES, TORUS_DIAMETER as TORUS_DIAMETER, TORUS_TESSELLATION, TORUS_THICKNESS } from "./consts";
+import { AdvancedDynamicTexture, Control } from '@babylonjs/gui';
+import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, IPhysicsEngine, AmmoJSPlugin, Ray, AbstractMesh, MeshBuilder } from "@babylonjs/core";
+import { BOX_BORDER, BOX_HEIGHT, BOX_WIDTH, BUSTER_AFFECT_HEIGHT, BUSTER_CENTER_FORCE, BUSTER_LEFT_X, BUSTER_RIGHT_X, BUSTER_SIDE_FORCE, BUSTER_SIDE_RADIUS, BUSTER_Y, BUSTER_Z, CAMERA_POSITION_Y, CAMERA_POSITION_Z, GRAVITY_WATER, MAX_TORUSES, MAX_TORUS_COLORS, TORUS_ANGULAR_VELOCITY_SLOWDOWN, TORUS_LINEAR_VELOCITY_SLOWDOWN, TORUS_MAX_ANGULAR_VELOCITY, TORUS_MAX_LINEAR_VELOCITY } from "./consts";
+import { MeshMaker } from './MeshMaker';
 
 class App {
     private canvas: HTMLCanvasElement;
@@ -15,6 +16,9 @@ class App {
 
     private currentOrientationGamma: number = 0;
 
+    private meshMaker: MeshMaker;
+    leftBuster: Mesh;
+    rightBuster: Mesh;
 
     constructor() {
         // create the canvas html element and attach it to the webpage
@@ -25,7 +29,7 @@ class App {
         document.body.appendChild(this.canvas);
 
         // initialize babylon scene and engine
-        this.engine = new Engine(this.canvas, true);
+        this.engine = new Engine(this.canvas, true, {}, true);
         this.prepareScene();
         // this.scene.debugLayer.show();
 
@@ -38,55 +42,60 @@ class App {
     }
     private prepareScene() {
         this.scene = new Scene(this.engine);
-        var gravityVector = new Vector3(0, -9.81, 0);
-        // var physicsPlugin = new CannonJSPlugin();
-        var physicsPlugin = new AmmoJSPlugin();
+
+        this.meshMaker = new MeshMaker(this.scene)
+
+        let gravityVector = new Vector3(0, GRAVITY_WATER, 0);
+        // let physicsPlugin = new CannonJSPlugin();
+        let physicsPlugin = new AmmoJSPlugin();
         this.scene.enablePhysics(gravityVector, physicsPlugin);
         this.physicsEngine = this.scene.getPhysicsEngine() as IPhysicsEngine;
 
         this.camera = new ArcRotateCamera("Camera", 0, 0, 10, new Vector3(0, CAMERA_POSITION_Y, 0), this.scene);
         this.camera.position = new Vector3(0, 0, CAMERA_POSITION_Z);
-        // this.camera.attachControl(this.canvas, true);
-        var light1: HemisphericLight = new HemisphericLight("light1", new Vector3(1, 1, 0), this.scene);
+        this.camera.attachControl(this.canvas, true);
+        let light1: HemisphericLight = new HemisphericLight("light1", new Vector3(1, 1, 0), this.scene);
 
         // Play box
-        const wallLeft = BoxBuilder.CreateBox("wallLeft", { width: BOX_BORDER, height: BOX_HEIGHT - BOX_BORDER * 2, depth: BOX_DEEPTH });
-        const wallRight = BoxBuilder.CreateBox("wallRight", { width: BOX_BORDER, height: BOX_HEIGHT - BOX_BORDER * 2, depth: BOX_DEEPTH });
-        const wallTop = BoxBuilder.CreateBox("wallTop", { width: BOX_WIDTH, height: BOX_BORDER, depth: BOX_DEEPTH });
-        const wallBottom = BoxBuilder.CreateBox("wallBottom", { width: BOX_WIDTH, height: BOX_BORDER, depth: BOX_DEEPTH });
-        const frontWall = BoxBuilder.CreateBox("frontWall", { width: BOX_WIDTH, height: BOX_HEIGHT, depth: BOX_DEEPTH });
-        const backWall = BoxBuilder.CreateBox("backWall", { width: BOX_WIDTH, height: BOX_HEIGHT, depth: BOX_DEEPTH });
+        const { wallLeft, wallRight, wallTop, wallBottom, frontWall, backWall } = this.meshMaker.makeWaterBox();
 
-        wallLeft.position.x = -BOX_WIDTH / 2 + BOX_BORDER / 2;
-        wallRight.position.x = BOX_WIDTH / 2 - BOX_BORDER / 2;
-        wallTop.position.y = BOX_HEIGHT / 2 - BOX_BORDER / 2;
-        wallBottom.position.y = -BOX_HEIGHT / 2 + BOX_BORDER / 2;
-        frontWall.position.z = -BOX_DEEPTH;
-        backWall.position.z = BOX_DEEPTH;
-
-        wallLeft.physicsImpostor = new PhysicsImpostor(wallLeft, PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9 }, this.scene);
-        wallRight.physicsImpostor = new PhysicsImpostor(wallRight, PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9 }, this.scene);
-        wallTop.physicsImpostor = new PhysicsImpostor(wallTop, PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9 }, this.scene);
-        wallBottom.physicsImpostor = new PhysicsImpostor(wallBottom, PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9 }, this.scene);
-        frontWall.physicsImpostor = new PhysicsImpostor(frontWall, PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9 }, this.scene);
-        backWall.physicsImpostor = new PhysicsImpostor(backWall, PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9 }, this.scene);
-
-        frontWall.visibility = 0.2;
-
-        // Spheres
-        for (let i = 0; i < MAX_SPHERES; i++) {
-            let sphere: Mesh = MeshBuilder.CreateTorus("torus", {
-                diameter: TORUS_DIAMETER,
-                thickness: TORUS_THICKNESS,
-                tessellation: TORUS_TESSELLATION
-            }, this.scene);
-            sphere.position.x = Math.random() * (BOX_WIDTH - BOX_BORDER * 2) - (BOX_WIDTH - BOX_BORDER * 2) / 2;
-            sphere.position.y = Math.random() * (BOX_HEIGHT - BOX_BORDER * 2) - (BOX_HEIGHT - BOX_BORDER * 2) / 2;
-            sphere.physicsImpostor = new PhysicsImpostor(sphere, PhysicsImpostor.MeshImpostor, { mass: 1, restitution: 0.9 }, this.scene);
+        // Toruses
+        const torusMaterials = this.meshMaker.makeTorusMaterials(MAX_TORUS_COLORS);
+        for (let i = 0; i < MAX_TORUSES; i++) {
+            let torus: Mesh = this.meshMaker.makeTorus();
+            torus.position.x = Math.random() * (BOX_WIDTH - BOX_BORDER * 4) - (BOX_WIDTH - BOX_BORDER * 4) / 2;
+            torus.position.y = Math.random() * (BOX_HEIGHT - BOX_BORDER * 2) - (BOX_HEIGHT - BOX_BORDER * 2) / 2;
+            torus.material = torusMaterials[Math.floor(Math.random() * MAX_TORUS_COLORS)];
+            torus.physicsImpostor.registerBeforePhysicsStep(() => {
+                // Torus should be slowed down by the water
+                const currentLinearVelocity = torus.physicsImpostor.getLinearVelocity();
+                if (currentLinearVelocity.length() > TORUS_MAX_LINEAR_VELOCITY) {
+                    currentLinearVelocity.normalize().scaleInPlace(TORUS_MAX_LINEAR_VELOCITY);
+                } else {
+                    currentLinearVelocity.scaleInPlace(TORUS_LINEAR_VELOCITY_SLOWDOWN);
+                }
+                torus.physicsImpostor.setLinearVelocity(currentLinearVelocity);
+                const currentAngularVelocity = torus.physicsImpostor.getAngularVelocity();
+                if (currentAngularVelocity.length() > TORUS_MAX_ANGULAR_VELOCITY) {
+                    currentAngularVelocity.normalize().scaleInPlace(TORUS_MAX_ANGULAR_VELOCITY);
+                } else {
+                    currentAngularVelocity.scaleInPlace(TORUS_ANGULAR_VELOCITY_SLOWDOWN);
+                }
+                torus.physicsImpostor.setAngularVelocity(currentAngularVelocity);
+            });
         }
 
+        // Busters
+        const { leftBuster, rightBuster } = this.meshMaker.makeBusters();
+        this.leftBuster = leftBuster;
+        this.rightBuster = rightBuster;
+
+        // Pins
+        const { leftPin, middlePin, rightPin } = this.meshMaker.makePins();
     }
     private prepareInput() {
+
+        window.addEventListener("resize", () => { this.engine.resize(); });
         // hide/show the Inspector
         window.addEventListener("keydown", (ev) => {
             // Shift+Ctrl+Alt+I
@@ -116,11 +125,11 @@ class App {
 
         // left and right buttons
         var advancedTexture = AdvancedDynamicTexture.CreateFullscreenUI("myUI");
-        var leftButton = this.createBustButton("leftbutton");
+        var leftButton = this.meshMaker.createBustButton("leftbutton");
         leftButton.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         leftButton.onPointerDownObservable.add(() => {
-            let centerPicked = this.centraPickBustedTorus(new Vector3(BUSTER_LEFT_X, BUSTER_Y, BUSTER_Z));
-            let sidePicked = this.sidePickBustedTorus(new Vector3(BUSTER_LEFT_X, BUSTER_Y, BUSTER_Z));
+            let centerPicked = this.centraPickBustedTorus(this.leftBuster.position);
+            let sidePicked = this.sidePickBustedTorus(this.leftBuster.position);
             console.log('leftButton picked', centerPicked, sidePicked);
             centerPicked.forEach(element => {
                 element.physicsImpostor.applyImpulse(new Vector3(0, BUSTER_CENTER_FORCE, 0), element.getAbsolutePosition());
@@ -130,64 +139,60 @@ class App {
             });
         });
 
-        var rightButton = this.createBustButton("rightbutton");
+        var rightButton = this.meshMaker.createBustButton("rightbutton");
         rightButton.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
         rightButton.onPointerDownObservable.add(() => {
-            let centerPicked = this.centraPickBustedTorus(new Vector3(BUSTER_RIGHT_X, BUSTER_Y, BUSTER_Z));
-            let sidePicked = this.sidePickBustedTorus(new Vector3(BUSTER_RIGHT_X, BUSTER_Y, BUSTER_Z));
+            let centerPicked = this.centraPickBustedTorus(this.rightBuster.position);
+            let sidePicked = this.sidePickBustedTorus(this.rightBuster.position);
             console.log('rightButton picked', centerPicked, sidePicked);
             centerPicked.forEach(element => {
-                element.physicsImpostor.applyImpulse(new Vector3(0, BUSTER_CENTER_FORCE, 0), element.getAbsolutePosition());
+                element.physicsImpostor.applyImpulse(new Vector3(Math.random(), BUSTER_CENTER_FORCE, Math.random()), element.getAbsolutePosition());
             });
+            let centerPickedNames = centerPicked.map(element => element.name);
             sidePicked.forEach(element => {
-                element.physicsImpostor.applyImpulse(new Vector3(0, BUSTER_SIDE_FORCE, 0), element.getAbsolutePosition());
+                if (!centerPickedNames.includes(element.name)) {
+                    element.physicsImpostor.applyImpulse(new Vector3(Math.random(), BUSTER_SIDE_FORCE, Math.random()), element.getAbsolutePosition());
+                }
             });
         });
 
         advancedTexture.addControl(leftButton);
         advancedTexture.addControl(rightButton);
-
     }
-    private createBustButton(name: string) {
-        const button = Button.CreateImageButton(name, name, "assets/textures/button1.png");
-        // button.left = left;
-        // button.top = "300px";
-        button.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-        button.width = "150px";
-        button.height = "150px";
-        button.thickness = 0;
-        button.image.width = "150px";
-        button.image.height = "150px";
-        return button;
+    private pickFilter(mesh: AbstractMesh): boolean {
+        return mesh.name.indexOf('torus') >= 0 && mesh.name.indexOf('hitter') >= 0;
     }
     private centraPickBustedTorus(centraVectory: Vector3): AbstractMesh[] {
         return this.scene.multiPickWithRay(
-            new Ray(centraVectory, new Vector3(0, 1, 0), BOX_HEIGHT / 3),
-            (mesh: AbstractMesh) => mesh.name.indexOf("torus") !== -1
-        ).map(mesh => mesh.pickedMesh);
+            new Ray(centraVectory, new Vector3(0, 1, 0), BUSTER_AFFECT_HEIGHT),
+            this.pickFilter
+        ).map(mesh => mesh.pickedMesh.parent as AbstractMesh);
     }
     private sidePickBustedTorus(centraVectory: Vector3): AbstractMesh[] {
-        const picked_xp = this.scene.multiPickWithRay(
-            new Ray(centraVectory.add(new Vector3(BUSTER_SIDE_RADIUS, 0, 0)), new Vector3(0, 1, 0), BOX_HEIGHT / 3),
-            (mesh: AbstractMesh) => mesh.name.indexOf("torus") !== -1
-        );
-        const picked_xn = this.scene.multiPickWithRay(
-            new Ray(centraVectory.add(new Vector3(-BUSTER_SIDE_RADIUS, 0, 0)), new Vector3(0, 1, 0), BOX_HEIGHT / 3),
-            (mesh: AbstractMesh) => mesh.name.indexOf("torus") !== -1
-        );
-        const picked_zp = this.scene.multiPickWithRay(
-            new Ray(centraVectory.add(new Vector3(0, 0, BUSTER_SIDE_RADIUS)), new Vector3(0, 1, 0), BOX_HEIGHT / 3),
-            (mesh: AbstractMesh) => mesh.name.indexOf("torus") !== -1
-        );
-        const picked_zn = this.scene.multiPickWithRay(
-            new Ray(centraVectory.add(new Vector3(0, 0, -BUSTER_SIDE_RADIUS)), new Vector3(0, 1, 0), BOX_HEIGHT / 3),
-            (mesh: AbstractMesh) => mesh.name.indexOf("torus") !== -1
-        );
+        const pickedAll = [];
+        for (let i = 0; i < BUSTER_SIDE_RADIUS; i = i + 0.02) {
+            let ray1 = new Ray(new Vector3(centraVectory.x + i, centraVectory.y, centraVectory.z + 0), new Vector3(0, 1, 0), BUSTER_AFFECT_HEIGHT);
+            let ray2 = new Ray(new Vector3(centraVectory.x - i, centraVectory.y, centraVectory.z + 0), new Vector3(0, 1, 0), BUSTER_AFFECT_HEIGHT);
+            let ray3 = new Ray(new Vector3(centraVectory.x + 0, centraVectory.y, centraVectory.z + i), new Vector3(0, 1, 0), BUSTER_AFFECT_HEIGHT);
+            let ray4 = new Ray(new Vector3(centraVectory.x + 0, centraVectory.y, centraVectory.z - i), new Vector3(0, 1, 0), BUSTER_AFFECT_HEIGHT);
+            // let ray1Mesh = MeshBuilder.CreateLines("ray1", { points: [ray1.origin, ray1.origin.add(new Vector3(0, 1, 0))] }, this.scene);
+            // let ray2Mesh = MeshBuilder.CreateLines("ray2", { points: [ray2.origin, ray2.origin.add(new Vector3(0, 1, 0))] }, this.scene);
+            // let ray3Mesh = MeshBuilder.CreateLines("ray3", { points: [ray3.origin, ray3.origin.add(new Vector3(0, 1, 0))] }, this.scene);
+            // let ray4Mesh = MeshBuilder.CreateLines("ray4", { points: [ray4.origin, ray4.origin.add(new Vector3(0, 1, 0))] }, this.scene);
+            // ray1Mesh.position = ray1.origin;
+            // ray2Mesh.position = ray2.origin;
+            // ray3Mesh.position = ray3.origin;
+            // ray4Mesh.position = ray4.origin;
+            pickedAll.concat(this.scene.multiPickWithRay(ray1, this.pickFilter));
+            pickedAll.concat(this.scene.multiPickWithRay(ray2, this.pickFilter));
+            pickedAll.concat(this.scene.multiPickWithRay(ray3, this.pickFilter));
+            pickedAll.concat(this.scene.multiPickWithRay(ray4, this.pickFilter));
+        }
         const pickedMeshes: { [key: string]: AbstractMesh } = {};
-        picked_xp.concat(picked_xn).concat(picked_zp).concat(picked_zn).map(p => p.pickedMesh).forEach(m => {
-            if (pickedMeshes.hasOwnProperty(m.name) === false) {
+        pickedAll.map(p => p.pickedMesh.parent as AbstractMesh).forEach(m => {
+            // if (pickedMeshes.hasOwnProperty(m.name) === false) {
                 pickedMeshes[m.name] = m;
-            };
+            // };
         });
 
         return Object.values(pickedMeshes);

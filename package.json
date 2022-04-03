@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "build": "webpack && cp -r public/assets cordova/www/assets",
+    "android:emulator": "npm run build && cd cordova && cordova run android --emulator && cd ..",
+    "build:android:debug": "npm run build && cd cordova && cordova build android -- --packageType=apk && cp platforms/android/app/build/outputs/apk/debug/app-debug.apk ../output && cd ..",
     "start": "webpack-dev-server --port 8080"
   },
   "repository": {
